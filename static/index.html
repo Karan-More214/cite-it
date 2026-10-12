@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cite-It · Document Q&amp;A with citations</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+:root{--ink:#0d0c0a;--ink2:#1b1913;--ink3:#14120e;--paper:#efece3;--hi:#ffd400;--red:#ff6a5a;--mute:#8a8574;--line:#38352a;--green:#9be58a}
+*{box-sizing:border-box}html,body{margin:0;background:var(--ink);color:var(--paper);font:15px/1.5 ui-monospace,Menlo,Consolas,monospace}
+header{padding:22px 24px 8px;max-width:1500px;margin:0 auto}
+h1{margin:0;font:800 30px/1.1 system-ui,Arial,sans-serif;letter-spacing:.02em}h1 b{color:var(--hi)}
+.sub{color:var(--mute);margin:6px 0 0;max-width:70ch}
+.wrap{max-width:1500px;margin:0 auto;padding:14px 24px 40px;display:grid;grid-template-columns:300px minmax(0,1fr) minmax(0,.9fr);gap:16px;align-items:start}
+.card{background:var(--ink2);border:1px solid var(--line);padding:16px}
+h2{margin:0 0 10px;font:700 12px/1 ui-monospace,monospace;letter-spacing:.16em;color:var(--hi);text-transform:uppercase}
+.btn{background:var(--hi);color:#111;border:0;padding:11px 14px;font:700 13px ui-monospace,monospace;letter-spacing:.06em;cursor:pointer;width:100%}
+.btn.ghost{background:transparent;color:var(--paper);border:1px solid var(--line);margin-top:8px}
+.btn:hover,.btn:focus-visible{outline:2px solid var(--paper);outline-offset:2px}
+.drop{border:1px dashed #5a564a;padding:18px;text-align:center;color:var(--mute);cursor:pointer;margin-bottom:10px}
+.drop.on{border-color:var(--hi);color:var(--hi)}
+.doc{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:7px 0;font-size:13px}.doc span:last-child{color:var(--mute);white-space:nowrap}
+.sugg{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.sugg button{text-align:left;background:var(--ink3);color:var(--paper);border:1px solid var(--line);padding:8px 10px;font:13px ui-monospace,monospace;cursor:pointer}
+.sugg button:hover{border-color:var(--hi)}
+#chat{display:flex;flex-direction:column;gap:12px;min-height:360px;max-height:62vh;overflow:auto;padding-right:4px}
+.q{align-self:flex-end;background:var(--hi);color:#111;padding:9px 13px;max-width:85%;font-weight:600}
+.a{background:var(--ink3);border:1px solid var(--line);padding:13px 15px;max-width:96%}
+.a.no{border-color:#7a2f27}
+.a .t{font-size:15.5px;line-height:1.6}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center;font-size:12px;color:var(--mute)}
+.chip{background:transparent;color:var(--hi);border:1px solid var(--hi);padding:3px 9px;font:700 12px ui-monospace,monospace;cursor:pointer}
+.chip:hover,.chip.on{background:var(--hi);color:#111}
+.conf{padding:2px 8px;border:1px solid var(--line)}
+.no .conf{color:var(--red);border-color:#7a2f27}
+.ask{display:flex;gap:8px;margin-top:12px}
+.ask input{flex:1;background:#0b0a08;border:1px solid var(--line);color:var(--paper);padding:12px;font:15px ui-monospace,monospace;min-width:0}
+.ask input:focus{outline:2px solid var(--hi)}
+.ask .btn{width:auto;padding:0 20px}
+.empty{color:var(--mute);padding:30px 6px}
+#src{position:sticky;top:12px}#src .pg{width:100%;display:block;border:1px solid var(--line);background:#fff}
+.passage{margin-top:10px;background:var(--ink3);border-left:3px solid var(--hi);padding:10px 12px;font-size:13px;color:#cfcab8}
+mark{background:#ffd40055;color:#fff;padding:0 2px}
+.srch{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px;color:var(--mute)}
+.msg{color:var(--red);min-height:1.2em;margin-top:8px;font-size:13px}
+.dots span{display:inline-block;width:6px;height:6px;background:var(--hi);margin-right:4px;animation:b 1s infinite}.dots span:nth-child(2){animation-delay:.15s}.dots span:nth-child(3){animation-delay:.3s}
+@keyframes b{50%{opacity:.2}}
+@media(max-width:1100px){.wrap{grid-template-columns:1fr}#chat{max-height:none}}
+@media (prefers-reduced-motion:reduce){.dots span{animation:none}}
+</style></head><body>
+<header><h1>CITE<b>-IT</b></h1><p class="sub">Ask your documents. See the proof. Every answer shows the page it came from, and if the document does not say, it tells you instead of guessing.</p></header>
+<div class="wrap">
+ <section class="card" aria-label="Documents">
+  <h2>1 · Your documents</h2>
+  <div class="drop" id="drop" tabindex="0" role="button">Drop PDF / TXT here<br>or click to choose</div>
+  <input type="file" id="file" accept=".pdf,.txt,.md" multiple hidden>
+  <button class="btn" id="sample">TRY THE SAMPLE HANDBOOK</button>
+  <div id="docs" style="margin-top:12px"></div>
+  <div class="msg" id="umsg" role="alert"></div>
+  <div id="sg" hidden><h2 style="margin-top:14px">Try asking</h2><div class="sugg" id="sgl"></div></div>
+ </section>
+ <section class="card" aria-label="Chat">
+  <h2>2 · Ask a question</h2>
+  <div id="chat" aria-live="polite"><div class="empty">Load a document, then ask anything about it.<br>Answers come with clickable page citations.</div></div>
+  <form class="ask" id="form"><input id="q" placeholder="e.g. How many days of annual leave do I get?" autocomplete="off" disabled aria-label="Question"><button class="btn" id="go" disabled>ASK</button></form>
+ </section>
+ <section class="card" aria-label="Source" id="src"><h2>3 · The proof</h2><div class="empty">Click a citation like <span class="chip">[1] p.2</span> to see the exact page with the key words highlighted.</div></section>
+</div>
+<script>
+const $=s=>document.querySelector(s);let sid=null,lastQ='',docs=[];
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function setUMsg(t){$('#umsg').textContent=t||''}
+async function api(url,opt){const r=await fetch(url,opt);let j=null;try{j=await r.json()}catch(e){}if(!r.ok)throw new Error((j&&j.detail)||('Error '+r.status));return j}
+function enable(d){sid=d.session;docs=d.docs;$('#q').disabled=false;$('#go').disabled=false;$('#q').focus();
+ $('#docs').innerHTML=d.docs.map(x=>`<div class="doc"><span>${esc(x.name)}</span><span>${x.pages} pg · ${x.words} w</span></div>`).join('');
+ $('#chat').innerHTML='<div class="empty">Ready. Ask a question below.</div>';}
+async function upload(files){setUMsg('Reading…');const fd=new FormData();[...files].forEach(f=>fd.append('files',f));
+ try{enable(await api('/api/upload',{method:'POST',body:fd}));setUMsg('');$('#sg').hidden=true}catch(e){setUMsg(e.message)}}
+$('#drop').onclick=()=>$('#file').click();
+$('#drop').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#file').click()}};
+$('#file').onchange=e=>e.target.files.length&&upload(e.target.files);
+['dragover','dragenter'].forEach(ev=>$('#drop').addEventListener(ev,e=>{e.preventDefault();$('#drop').classList.add('on')}));
+['dragleave','drop'].forEach(ev=>$('#drop').addEventListener(ev,e=>{e.preventDefault();$('#drop').classList.remove('on')}));
+$('#drop').addEventListener('drop',e=>e.dataTransfer.files.length&&upload(e.dataTransfer.files));
+const SG=["How many days of paid annual leave do I get?","How many days a week can I work remotely?","What is the notice period for resignation?","How long must my password be?","What is the capital of Australia?"];
+$('#sample').onclick=async()=>{setUMsg('Loading…');try{enable(await api('/api/sample',{method:'POST'}));setUMsg('');
+ $('#sg').hidden=false;$('#sgl').innerHTML=SG.map(s=>`<button type="button">${esc(s)}</button>`).join('');
+ $('#sgl').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('#q').value=b.textContent;$('#form').requestSubmit()})}catch(e){setUMsg(e.message)}};
+function hl(text,terms){let h=esc(text);const ts=[...new Set(terms.filter(t=>t.length>=3))].sort((a,b)=>b.length-a.length);
+ ts.forEach(t=>{h=h.replace(new RegExp('\\b('+t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'[a-z]*)','gi'),'<mark>$1</mark>')});return h}
+function showSrc(c,q,terms){
+ document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x.dataset.k===c.n+'|'+q));
+ const doc=docs.find(d=>d.name===c.doc),url=`/api/page/${sid}/${encodeURIComponent(c.doc)}/${c.page}.png?q=${encodeURIComponent(q)}`;
+ $('#src').innerHTML=`<h2>3 · The proof</h2><div class="srch"><span>${esc(c.doc)} · page ${c.page}</span><span>match ${(c.coverage*100).toFixed(0)}%</span></div>`+
+  (doc&&doc.viewable?`<img class="pg" alt="Page ${c.page} of ${esc(c.doc)} with matching words highlighted" src="${url}">`:'')+
+  `<div class="passage">${hl(c.text,terms)}</div>`}
+async function ask(q){
+ const chat=$('#chat');if(chat.querySelector('.empty'))chat.innerHTML='';
+ chat.insertAdjacentHTML('beforeend',`<div class="q">${esc(q)}</div>`);
+ chat.insertAdjacentHTML('beforeend','<div class="a" id="wait"><span class="dots"><span></span><span></span><span></span></span></div>');chat.scrollTop=1e9;
+ try{const r=await api('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:sid,question:q})});
+  $('#wait').remove();const el=document.createElement('div');el.className='a'+(r.found?'':' no');
+  const t=document.createElement('div');t.className='t';t.innerHTML=esc(r.answer).replace(/\[(\d+)\]/g,'<sup>[$1]</sup>');el.appendChild(t);
+  const m=document.createElement('div');m.className='meta';
+  r.citations.forEach(c=>{const b=document.createElement('button');b.type='button';b.className='chip';b.dataset.k=c.n+'|'+q;b.textContent=`[${c.n}] p.${c.page}`;b.onclick=()=>showSrc(c,q,r.terms);m.appendChild(b)});
+  const cf=document.createElement('span');cf.className='conf';cf.textContent=(r.found?'evidence match ':'evidence too weak ')+Math.round(r.confidence*100)+'%';m.appendChild(cf);
+  if(r.mode==='llm'){const s=document.createElement('span');s.textContent='LLM answer, citations checked';m.appendChild(s)}
+  el.appendChild(m);chat.appendChild(el);chat.scrollTop=1e9;
+  if(r.citations.length)showSrc(r.citations[0],q,r.terms)}
+ catch(e){$('#wait')&&$('#wait').remove();chat.insertAdjacentHTML('beforeend',`<div class="a no"><div class="t">${esc(e.message)}</div></div>`)}}
+$('#form').onsubmit=e=>{e.preventDefault();const q=$('#q').value.trim();if(!q||!sid)return;$('#q').value='';ask(q)};
+</script></body></html>
