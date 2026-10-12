@@ -119,9 +119,23 @@ def health():
 
 
 @app.get("/favicon.svg", include_in_schema=False)
-@app.get("/favicon.ico", include_in_schema=False)
-def favicon():
+def favicon_svg():
     return FileResponse(ROOT / "static/favicon.svg", media_type="image/svg+xml")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon_ico():
+    return FileResponse(ROOT / "static/favicon.ico", media_type="image/x-icon")
+
+
+@app.get("/favicon-32.png", include_in_schema=False)
+def favicon_32():
+    return FileResponse(ROOT / "static/favicon-32.png", media_type="image/png")
+
+
+@app.get("/apple-touch-icon.png", include_in_schema=False)
+def apple_touch_icon():
+    return FileResponse(ROOT / "static/apple-touch-icon.png", media_type="image/png")
 
 
 @app.get("/")
