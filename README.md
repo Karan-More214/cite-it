@@ -4,6 +4,12 @@ Upload a PDF, ask a question, get an answer with `[n]` citations and the exact
 page shown with the evidence highlighted. If the documents do not contain the
 answer, Cite-It says so instead of guessing.
 
+## Screenshots
+
+| Start | Answer with citation | Refusal when not found |
+|---|---|---|
+| ![Start](docs/01_start.png) | ![Answer](docs/02_answers.png) | ![Refusal](docs/03_refusal.png) |
+
 ## Run in VS Code
 
 1. Open this folder in VS Code (`File > Open Folder`).
