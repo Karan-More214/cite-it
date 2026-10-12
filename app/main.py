@@ -100,9 +100,9 @@ def page_image(sid: str, doc: str, page: int, q: str = ""):
     data = s["raw"].get(doc)
     if data is None or not doc.lower().endswith(".pdf"):
         raise HTTPException(404, "Preview not available for this file")
-    from .textutil import terms
+    from .textutil import highlight_terms
     try:
-        png = render_page(data, page, [w for w in terms(q)][:8])
+        png = render_page(data, page, highlight_terms(q)[:8])
     except IndexError:
         raise HTTPException(404, "No such page")
     return Response(png, media_type="image/png", headers={"Cache-Control": "private, max-age=600"})

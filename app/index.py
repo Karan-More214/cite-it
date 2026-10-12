@@ -10,7 +10,7 @@ from pypdf import PdfReader
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from .textutil import sentences, terms
+from .textutil import groups as term_groups, sentences, terms
 
 
 @dataclass
@@ -76,7 +76,7 @@ class Index:
         df = self.df.get(t, 0)
         return math.log(1 + (self.n - df + 0.5) / (df + 0.5))
 
-    def bm25(self, q: list[str], k1=1.5, b=0.75) -> np.ndarray:
+    def bm25(self, q: dict[str, float], k1=1.5, b=0.75) -> np.ndarray:
         s = np.zeros(self.n)
         for i, x in enumerate(self.p):
             if not x.toks:
@@ -85,10 +85,10 @@ class Index:
             for t in x.toks:
                 tf[t] = tf.get(t, 0) + 1
             L = len(x.toks)
-            for t in set(q):
+            for t, w in q.items():
                 f = tf.get(t, 0)
                 if f:
-                    s[i] += self.idf(t) * f * (k1 + 1) / (f + k1 * (1 - b + b * L / self.avg))
+                    s[i] += w * self.idf(t) * f * (k1 + 1) / (f + k1 * (1 - b + b * L / self.avg))
         return s
 
     def dense(self, query: str) -> np.ndarray:
@@ -98,18 +98,41 @@ class Index:
         nv = np.linalg.norm(v)
         return (self.M @ (v[0] / nv)) if nv else np.zeros(self.n)
 
-    def coverage(self, q: list[str], i: int) -> float:
-        """Share of the question's idf-weighted terms found in passage i (0..1)."""
-        qs = set(q)
-        tot = sum(self.idf(t) for t in qs) or 1.0
+    def present(self, gs: list[set[str]]) -> list[bool]:
+        """For each question term: does it (or a related word) appear in any passage at all?"""
+        return [any(self.df.get(t, 0) > 0 for t in g) for g in gs]
+
+    def match(self, gs: list[set[str]], i: int, dense: float = 0.0) -> tuple[float, set[str]]:
+        """Relevance of passage i to the question, 0..1, relative to the question itself (not a fixed corpus-tuned cutoff):
+        the share of question terms found in the passage (by count and idf-weighted), a little dense similarity,
+        and a penalty for question terms that no document mentions at all."""
+        if not gs:
+            return 0.0, set()
         have = set(self.p[i].toks)
-        return sum(self.idf(t) for t in qs if t in have) / tot
+        pres = self.present(gs)
+        raw = [max((self.idf(t) for t in g if t in self.df), default=0.0) for g in gs]
+        known = [r for r, ok in zip(raw, pres) if ok]
+        cap = (sum(known) / len(known)) if known else 1.0  # an unseen word must not dominate the idf total
+        w = [min(r, cap * 1.5) if ok else cap for r, ok in zip(raw, pres)]
+        hit = [bool(g & have) for g in gs]
+        share_cnt = sum(hit) / len(gs)
+        share_idf = sum(wi for wi, h in zip(w, hit) if h) / (sum(w) or 1.0)
+        absent = 1 - sum(pres) / len(gs)
+        conf = (0.5 * share_cnt + 0.5 * share_idf) * (1 - 0.6 * absent)
+        conf = min(1.0, conf + 0.3 * max(0.0, dense - 0.2))
+        matched = set().union(*(g & have for g in gs))
+        return conf, matched
 
     def search(self, query: str, k: int = 4) -> list[dict]:
-        q = terms(query)
-        if not self.n or not q:
+        gs = term_groups(query)
+        if not self.n or not gs:
             return []
-        sb, sd = self.bm25(q), self.dense(query)
+        own = set(terms(query))
+        qw: dict[str, float] = {}
+        for g in gs:
+            for t in g:
+                qw[t] = max(qw.get(t, 0.0), 1.0 if t in own else 0.5)
+        sb, sd = self.bm25(qw), self.dense(query + " " + " ".join(sorted(set().union(*gs))))
         rank = lambda s: {int(i): r for r, i in enumerate(np.argsort(-s))}
         rb, rd = rank(sb), rank(sd)
         fused = {i: 1 / (60 + rb[i]) + (1 / (60 + rd[i]) if sd.any() else 0) for i in range(self.n)}
@@ -122,7 +145,8 @@ class Index:
             if key in seen:
                 continue
             seen.add(key)
-            hits.append({"i": i, "passage": self.p[i], "bm25": float(sb[i]), "dense": float(sd[i]), "coverage": self.coverage(q, i)})
+            conf, matched = self.match(gs, i, float(sd[i]))
+            hits.append({"i": i, "passage": self.p[i], "bm25": float(sb[i]), "dense": float(sd[i]), "coverage": conf, "matched": matched})
             if len(hits) >= k:
                 break
         return hits
